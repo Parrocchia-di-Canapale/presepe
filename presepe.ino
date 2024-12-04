@@ -1,42 +1,63 @@
+#include "Arduino_LED_Matrix.h"
+
 //la durata del giorno (in secondi)
-#define dayDuration 180
-#define transitionDuration 20
-#define houseLightsChangeDelay 0
+#define dayDuration 10
+//la durata della transizione tra il giorno e la notte
+#define transitionDuration 2
+//la durata della transizione per l'accensione delle luci delle case
+#define houseTransitionDuration 2
+
 #define true 1
 #define false 0
 
+//Qui a seguito la definizione dei pin dei relay.
+//Perché il programma funzioni i relay delle case devono essere messi tutti in PIN successivi.
 #define sunPin 3
 #define firstHousePin 4
 #define lastHousePin 11
 
-void transitionWithHouses(int isDay){
-  for(int i = 0; i < transitionDuration; i++){
-    analogWrite(sunPin, abs((isDay*255)-(255/transitionDuration)*i));
-    if(i > i*houseLightsChangeDelay){
-      digitalWrite(random(firstHousePin, lastHousePin), isDay);
-    }
-    delay(1000);
-  }
+ArduinoLEDMatrix matrix;
+
+byte sun[8][12]{
+	0x2040f0df,
+  0xb1f81f8d,
+  0xfb0f0204,
+  66
+};
+
+byte moon[8][12]{
+  0xf01c,
+  0x81881881,
+  0xc80f0000,
+  66
+};
+
+unsigned long timeNow = 0;
+unsigned long lastChange = 0;
+int isDay = true;
+
+void normalTransition(int *isDay){
+  Serial.println("\nInizio la transizione...");
+  digitalWrite(LED_BUILTIN, HIGH);
   
-  isDay != isDay;
-
-  for(int i = firstHousePin; i < lastHousePin+1; i++){
-    digitalWrite(i, isDay);
-  }
-}
-
-void transitionWithoutHouses(int isDay){
+  Serial.println(*isDay==1?"Faccio sorgere il sole...":"Faccio tramontare il sole...");
   for(int i = 0; i < 255; i++){
-    analogWrite(sunPin, abs((isDay*255)-(255/transitionDuration)*i));
+    analogWrite(sunPin, abs(((*isDay)*255)-(255/transitionDuration)*i));
     delay(transitionDuration*1000/255);
   }
 
+  Serial.println(*isDay==1?"Spengo le luci delle case...":"Accendo le luci delle case...");
   for(int i = firstHousePin; i < lastHousePin+1; i++){
-    digitalWrite(i, isDay);
-    delay(random(1000,5000));
+    digitalWrite(i, (*isDay));
+    delay(random(1000,houseTransitionDuration/lastHousePin-firstHousePin));
   }
   
-  isDay != isDay;
+  *isDay = (*isDay==1?1:0);
+  Serial.print("La variabile isDay è stata impostata su:");
+  Serial.print((*isDay));
+
+  Serial.print(". La transizione è finita.");
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void testConnections(){
@@ -59,6 +80,10 @@ void testConnections(){
 
 void setup(){
   Serial.begin(9600);
+  matrix.begin();
+
+  matrix.renderBitmap(sun, 8, 12);
+
   for(int i = firstHousePin; i < lastHousePin+1; i++){
     pinMode(i, OUTPUT);
   }
@@ -74,27 +99,12 @@ void setup(){
 }
 
 void loop(){
-  unsigned long time;
-  unsigned long lastChange;
-  int isDay = true;
-  
-  /*time = millis();
-  if(time-lastChange >= dayDuration){
-    time = lastChange;
-    transition(isDay);
-  }*/
-
-  /*transitionWithHouses(isDay);
-
-  delay(10000);
-
-  transitionWithHouses(isDay);
-
-  delay(10000);
-
-  transitionWithHouses(isDay);
-
-  delay(10000);
-
-  transitionWithHouses(isDay);*/
+  timeNow = millis();
+  if(timeNow-lastChange >= dayDuration*1000){
+    Serial.print("\nSono passati ");
+    Serial.print(dayDuration);
+    Serial.print(" secondi dall'ultimo giorno. \n");
+    normalTransition(&isDay);
+    lastChange = millis();
+  }
 }
