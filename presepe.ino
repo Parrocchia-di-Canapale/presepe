@@ -54,7 +54,7 @@ byte moon[8][12] = {
 
 unsigned long timeNow = 0;
 unsigned long lastChange = 0;
-int isDay = true;
+int isDay = false;
 
 void normalTransition(int *isDay){
   matrix.loadSequence(LEDMATRIX_ANIMATION_LOAD);
@@ -124,6 +124,8 @@ void setup(){
   digitalWrite(sunPin, LOW);
 
   matrix.renderBitmap(empty, 8, 12);
+
+  normalTransition(&isDay);
 }
 
 void loop(){
