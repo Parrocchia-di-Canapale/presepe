@@ -1,4 +1,5 @@
 #include "Arduino_LED_Matrix.h"
+#include "ArduinoGraphics.h"
 
 //la durata del giorno (in secondi)
 #define dayDuration 10
@@ -18,18 +19,37 @@
 
 ArduinoLEDMatrix matrix;
 
-byte sun[8][12]{
-	0x2040f0df,
-  0xb1f81f8d,
-  0xfb0f0204,
-  66
+byte empty[8][12] = {
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
 
-byte moon[8][12]{
-  0xf01c,
-  0x81881881,
-  0xc80f0000,
-  66
+byte sun[8][12] = {
+  { 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0 },
+  { 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0 },
+  { 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1 },
+  { 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0 },
+  { 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0 },
+  { 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1 },
+  { 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0 },
+  { 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0 }
+};
+
+byte moon[8][12] = {
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0 },
+  { 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0 },
+  { 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0 },
+  { 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0 },
+  { 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0 },
+  { 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0 },
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
 
 unsigned long timeNow = 0;
@@ -37,6 +57,9 @@ unsigned long lastChange = 0;
 int isDay = true;
 
 void normalTransition(int *isDay){
+  matrix.loadSequence(LEDMATRIX_ANIMATION_LOAD);
+  matrix.play(true);
+
   Serial.println("\nInizio la transizione...");
   digitalWrite(LED_BUILTIN, HIGH);
   
@@ -52,12 +75,14 @@ void normalTransition(int *isDay){
     delay(random(1000,houseTransitionDuration/lastHousePin-firstHousePin));
   }
   
-  *isDay = (*isDay==1?1:0);
-  Serial.print("La variabile isDay è stata impostata su:");
+  *isDay = (*isDay==1?0:1);
+  Serial.print("La variabile isDay è stata impostata su: ");
   Serial.print((*isDay));
 
   Serial.print(". La transizione è finita.");
   digitalWrite(LED_BUILTIN, LOW);
+
+  matrix.renderBitmap((*isDay==1?sun:moon), 8, 12);
 }
 
 void testConnections(){
@@ -82,7 +107,8 @@ void setup(){
   Serial.begin(9600);
   matrix.begin();
 
-  matrix.renderBitmap(sun, 8, 12);
+  matrix.loadSequence(LEDMATRIX_ANIMATION_STARTUP);
+  matrix.play(true);
 
   for(int i = firstHousePin; i < lastHousePin+1; i++){
     pinMode(i, OUTPUT);
@@ -96,6 +122,8 @@ void setup(){
     delay(150);
   }
   digitalWrite(sunPin, LOW);
+
+  matrix.renderBitmap(empty, 8, 12);
 }
 
 void loop(){
