@@ -65,7 +65,7 @@ void normalTransition(int *isDay){
   
   Serial.println(*isDay==1?"Faccio sorgere il sole...":"Faccio tramontare il sole...");
   for(int i = 0; i < 255; i++){
-    analogWrite(sunPin, abs(((*isDay)*255)-(255/transitionDuration)*i));
+    analogWrite(sunPin, abs(((*isDay)*255)-(-1.0+pow(1.022,i))));
     delay(transitionDuration*1000/255);
   }
 
