@@ -2,11 +2,11 @@
 #include "ArduinoGraphics.h"
 
 //la durata del giorno (in secondi)
-#define dayDuration 10
+#define dayDuration 60
 //la durata della transizione tra il giorno e la notte
-#define transitionDuration 2
+#define transitionDuration 20
 //la durata della transizione per l'accensione delle luci delle case
-#define houseTransitionDuration 2
+#define houseTransitionDuration 20
 
 #define true 1
 #define false 0
@@ -54,9 +54,10 @@ byte moon[8][12] = {
 
 unsigned long timeNow = 0;
 unsigned long lastChange = 0;
-int isDay = false;
+int isDay = true;
 
 void normalTransition(int *isDay){
+  int houseIndex = firstHousePin;
   matrix.loadSequence(LEDMATRIX_ANIMATION_LOAD);
   matrix.play(true);
 
@@ -64,15 +65,19 @@ void normalTransition(int *isDay){
   digitalWrite(LED_BUILTIN, HIGH);
   
   Serial.println(*isDay==1?"Faccio sorgere il sole...":"Faccio tramontare il sole...");
-  for(int i = 0; i < 255; i++){
-    analogWrite(sunPin, abs(((*isDay)*255)-(-1.0+pow(1.022,i))));
+  for(int i = 0; i < 256; i++){
+    analogWrite(sunPin, abs(((*isDay)*255)-i)); //(-1.0+pow(1.022,i))
+    /*if(i%30==0){
+      digitalWrite(houseIndex, (*isDay==1?LOW:HIGH));
+      houseIndex++;
+    }*/
     delay(transitionDuration*1000/255);
   }
 
   Serial.println(*isDay==1?"Spengo le luci delle case...":"Accendo le luci delle case...");
   for(int i = firstHousePin; i < lastHousePin+1; i++){
-    digitalWrite(i, (*isDay));
-    delay(random(1000,houseTransitionDuration/lastHousePin-firstHousePin));
+    digitalWrite(i, !(*isDay));
+    delay(random(500,2500)); //il random non funziona
   }
   
   *isDay = (*isDay==1?0:1);
@@ -107,23 +112,11 @@ void setup(){
   Serial.begin(9600);
   matrix.begin();
 
-  matrix.loadSequence(LEDMATRIX_ANIMATION_STARTUP);
-  matrix.play(true);
-
-  for(int i = firstHousePin; i < lastHousePin+1; i++){
+  for (int i = firstHousePin; i < lastHousePin+1; i++) {
     pinMode(i, OUTPUT);
   }
-  pinMode(sunPin, OUTPUT);
 
   testConnections();
-
-  for(int i = firstHousePin; i < lastHousePin+1; i++){
-    digitalWrite(i, LOW);
-    delay(150);
-  }
-  digitalWrite(sunPin, LOW);
-
-  matrix.renderBitmap(empty, 8, 12);
 
   normalTransition(&isDay);
 }
