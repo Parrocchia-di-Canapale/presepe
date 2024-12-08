@@ -28,6 +28,6 @@ Modificando questi `#define` possiamo quindi modificare il comportamento del pre
 
 Per il resto il funzionamento del codice è estremamente semplice: una volta avviato farà un test accendendo e spegnendo tutte le luci per permettere a chi ha costruito il presepe di verificare il corretto funzionamento di tutto, per poi portare la scena a giorno.
 
-Successivamente entrerà nello stato di funzionamento "normale": verranno lanciate due task (sfruttando, come detto sopra FreeRTOS), utilizzate per gestire il sole e le case.
+Successivamente entrerà nello stato di funzionamento "normale". Verranno infatti lanciate due task (sfruttando, come detto sopra FreeRTOS), utilizzate per gestire il sole e le case.
 
-Il codice che queste due task useranno sarà praticamente lo stesso, aspettare il momento giusto per poi lanciare la transizione dal giorno alla notte o viceversa.
+Il codice che queste due task eseguiranno sarà praticamente lo stesso: aspettare il momento giusto per poi lanciare la transizione dal giorno alla notte, o viceversa, per il loro campo di competenza.
