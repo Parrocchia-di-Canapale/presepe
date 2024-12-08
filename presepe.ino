@@ -1,133 +1,124 @@
-#include "Arduino_LED_Matrix.h"
-#include "ArduinoGraphics.h"
+#include <LinkedList.h>
 
-//la durata del giorno (in secondi)
 #define dayDuration 60
-//la durata della transizione tra il giorno e la notte
 #define transitionDuration 20
-//la durata della transizione per l'accensione delle luci delle case
 #define houseTransitionDuration 20
+#define housesTransitionDelay 10
 
 #define true 1
 #define false 0
 
-//Qui a seguito la definizione dei pin dei relay.
-//Perché il programma funzioni i relay delle case devono essere messi tutti in PIN successivi.
-#define sunPin 3
-#define firstHousePin 4
-#define lastHousePin 11
+#define sunPin 10
+#define firstHousePin 0
+#define lastHousePin 7
 
-ArduinoLEDMatrix matrix;
+TaskHandle_t sunTaskHandle;
+TaskHandle_t housesTaskHandle;
+LinkedList<int> pinList = LinkedList<int>();
 
-byte empty[8][12] = {
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-};
-
-byte sun[8][12] = {
-  { 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0 },
-  { 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0 },
-  { 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1 },
-  { 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0 },
-  { 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0 },
-  { 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1 },
-  { 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0 },
-  { 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0 }
-};
-
-byte moon[8][12] = {
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-  { 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0 },
-  { 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0 },
-  { 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0 },
-  { 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0 },
-  { 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0 },
-  { 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0 },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-};
-
-unsigned long timeNow = 0;
 unsigned long lastChange = 0;
 int isDay = true;
 
-void normalTransition(int *isDay){
-  int houseIndex = firstHousePin;
-  matrix.loadSequence(LEDMATRIX_ANIMATION_LOAD);
-  matrix.play(true);
+void housesTask(void *pvParameters){
+  Serial.print("--> housesTask è partita sul core ");
+  Serial.println(xPortGetCoreID());
 
-  Serial.println("\nInizio la transizione...");
-  digitalWrite(LED_BUILTIN, HIGH);
-  
-  Serial.println(*isDay==1?"Faccio sorgere il sole...":"Faccio tramontare il sole...");
-  for(int i = 0; i < 256; i++){
-    analogWrite(sunPin, abs(((*isDay)*255)-i)); //(-1.0+pow(1.022,i))
-    /*if(i%30==0){
-      digitalWrite(houseIndex, (*isDay==1?LOW:HIGH));
-      houseIndex++;
-    }*/
-    delay(transitionDuration*1000/255);
+  int pinIndex = 0;
+
+  for(;;){
+    if(pinList.size() != lastHousePin-firstHousePin+1){
+      Serial.println("Ricostruisco la lista dei pin...");
+      /*Serial.print(pinList.size());
+      Serial.print(lastHousePin-firstHousePin);
+      Serial.println(")...");
+      delay(1000);*/
+      for(int i = firstHousePin; i < lastHousePin+1; i++){
+        pinList.add(i);
+      }
+    }
+
+    if(millis()-lastChange >= (dayDuration+housesTransitionDelay)*1000){
+      Serial.print(isDay==1?"Accendo le luci delle case...":"Spengo le luci delle case...");
+      Serial.println(!isDay);
+      for(int i = firstHousePin; i < lastHousePin+1; i++){
+        pinIndex = random(0, pinList.size());
+        digitalWrite(pinList.get(pinIndex), !isDay);
+        delay(random(500, 2500));
+        pinList.remove(pinIndex);
+      }
+
+      isDay = (isDay==1?0:1);
+      Serial.print("Ho impostato il giorno su ");
+      Serial.println(isDay);
+    }
   }
+}
 
-  Serial.println(*isDay==1?"Spengo le luci delle case...":"Accendo le luci delle case...");
-  for(int i = firstHousePin; i < lastHousePin+1; i++){
-    digitalWrite(i, !(*isDay));
-    delay(random(500,2500)); //il random non funziona
+void sunTask(void *pvParameters){
+  Serial.print("--> sunTask è partita sul core ");
+  Serial.println(xPortGetCoreID());
+
+  for(;;){
+    if(millis()-lastChange >= dayDuration*1000){
+      Serial.println(isDay==1?"Faccio tramontare il sole...":"Faccio sorgere il sole...");
+
+      for(int i = 0; i < 256; i++){
+        analogWrite(sunPin, abs(((isDay)*255)-i)); //(-1.0+pow(1.022,i))
+        delay(transitionDuration*1000/255);
+      }
+      lastChange = millis();
+    }
   }
-  
-  *isDay = (*isDay==1?0:1);
-  Serial.print("La variabile isDay è stata impostata su: ");
-  Serial.print((*isDay));
-
-  Serial.print(". La transizione è finita.");
-  digitalWrite(LED_BUILTIN, LOW);
-
-  matrix.renderBitmap((*isDay==1?sun:moon), 8, 12);
 }
 
 void testConnections(){
   for(int i = firstHousePin; i < lastHousePin+1; i++){
     digitalWrite(i, LOW);
-    delay(150);
+    delay(50);
   }
   digitalWrite(sunPin, LOW);
 
-  delay(2500);
+  delay(150);
 
   for(int i = lastHousePin; i > firstHousePin-1; i--){
     digitalWrite(i, HIGH);
-    delay(150);
+    delay(50);
   }
   digitalWrite(sunPin, HIGH);
+}
 
-  delay(2500);
+void clearSerial(){
+  Serial.print("\n\n\n");
+  for(int i = 0; i < 100; i++){
+    Serial.print(("-"));
+  }
+  Serial.print("\n\n\n");
 }
 
 void setup(){
   Serial.begin(9600);
-  matrix.begin();
+  delay(1000);
 
+  clearSerial();
+
+  Serial.print("Imposto i pin e li inserisco nella lista...");
   for (int i = firstHousePin; i < lastHousePin+1; i++) {
     pinMode(i, OUTPUT);
+    pinList.add(i);
   }
+  analogWrite(sunPin, 255);
+  Serial.println(" Fatto!");
 
+  Serial.print("Testo le connessioni...");
   testConnections();
+  Serial.println("Fatto!");
 
-  normalTransition(&isDay);
+  Serial.println("Avvio le task...");
+  //...(function, name, stack size, parameter, priority, task handle, core)
+  xTaskCreate(sunTask, "Task del sole", 10000, NULL, 1, &sunTaskHandle);
+  xTaskCreate(housesTask, "Task delle case", 10000, NULL, 1, &housesTaskHandle);
+  Serial.println("\n\n\n");
+
 }
 
-void loop(){
-  timeNow = millis();
-  if(timeNow-lastChange >= dayDuration*1000){
-    Serial.print("\nSono passati ");
-    Serial.print(dayDuration);
-    Serial.print(" secondi dall'ultimo giorno. \n");
-    normalTransition(&isDay);
-    lastChange = millis();
-  }
-}
+void loop(){}
