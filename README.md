@@ -22,7 +22,7 @@ Il codice è stato pensato per essere interamente parametrico: tra le prime righ
 | `#define housesTransitionDelay`   | Il periodo di tempo che passa dall'inizio del tramonto/alba all'inizio del cambiamento di stato delle case |
 | `#define sunPin`                  | Il pin al qualche è collegato il faretto per il sole |
 | `#define firstHousePin`           | Il pin del primo relay delle luci delle case |
-| `#define lastHousePin 11`         | Il pin dell'ultimo relay delle luci delle case |
+| `#define lastHousePin`            | Il pin dell'ultimo relay delle luci delle case |
 
 Modificando questi `#define` possiamo quindi modificare il comportamento del presepe, per aggiustarlo sulle nostre esigenze.
 
