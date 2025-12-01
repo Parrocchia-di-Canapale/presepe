@@ -1,20 +1,19 @@
 #include <LinkedList.h>
 
 #define dayDuration 60
-#define transitionDuration 20
 #define houseTransitionDuration 20
 #define housesTransitionDelay 10
 
 #define true 1
 #define false 0
 
-#define sunPin 10
-#define firstHousePin 0
-#define lastHousePin 7
-
 TaskHandle_t sunTaskHandle;
 TaskHandle_t housesTaskHandle;
-LinkedList<int> pinList = LinkedList<int>();
+
+Planet sun = Planet(16); //TODO: Set the correct pin for the sun light
+Planet moon = Planet(17); //TODO: Set the correct pin for the moon light
+
+LinkedList<House> housesList = LinkedList<House>();
 
 unsigned long lastChange = 0;
 int isDay = true;
@@ -61,10 +60,10 @@ void sunTask(void *pvParameters){
   for(;;){
     if(millis()-lastChange >= dayDuration*1000){
       Serial.println(isDay==1?"Faccio tramontare il sole...":"Faccio sorgere il sole...");
-
-      for(int i = 0; i < 256; i++){
-        analogWrite(sunPin, abs(((isDay)*255)-i)); //(-1.0+pow(1.022,i))
-        delay(transitionDuration*1000/255);
+      if(isDay){
+        sun.turnOn();
+      }else{
+        sun.turnOff();
       }
       lastChange = millis();
     }
@@ -101,11 +100,15 @@ void setup(){
 
   clearSerial();
 
-  Serial.print("Imposto i pin e li inserisco nella lista...");
-  for (int i = firstHousePin; i < lastHousePin+1; i++) {
-    pinMode(i, OUTPUT);
-    pinList.add(i);
-  }
+  Serial.print("Creo le luci e le aggiungo alla lista...");
+  lightsList.add(GenericLight(32));
+  lightsList.add(GenericLight(33));
+  lightsList.add(GenericLight(25));
+  lightsList.add(GenericLight(26));
+  lightsList.add(GenericLight(27));
+  lightsList.add(GenericLight(14));
+  lightsList.add(GenericLight(12));
+  lightsList.add(GenericLight(13));
   analogWrite(sunPin, 255);
   Serial.println(" Fatto!");
 
