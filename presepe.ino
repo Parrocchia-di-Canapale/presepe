@@ -1,4 +1,7 @@
 #include <LinkedList.h>
+#include "Planet.h"
+#include "House.h"
+#include "Neighborhood.h"
 
 #define dayDuration 60
 #define houseTransitionDuration 20
@@ -8,12 +11,12 @@
 #define false 0
 
 TaskHandle_t sunTaskHandle;
+TaskHandle_t moonTaskHandle;
 TaskHandle_t housesTaskHandle;
 
-Planet sun = Planet(16); //TODO: Set the correct pin for the sun light
-Planet moon = Planet(17); //TODO: Set the correct pin for the moon light
-
-LinkedList<House> housesList = LinkedList<House>();
+Planet sun = Planet(16, true); //TODO: Set the correct pin for the sun light
+Planet moon = Planet(17, true); //TODO: Set the correct pin for the moon light
+Neighborhood neighborhood = Neighborhood();
 
 unsigned long lastChange = 0;
 int isDay = true;
@@ -25,25 +28,12 @@ void housesTask(void *pvParameters){
   int pinIndex = 0;
 
   for(;;){
-    if(pinList.size() != lastHousePin-firstHousePin+1){
-      Serial.println("Ricostruisco la lista dei pin...");
-      /*Serial.print(pinList.size());
-      Serial.print(lastHousePin-firstHousePin);
-      Serial.println(")...");
-      delay(1000);*/
-      for(int i = firstHousePin; i < lastHousePin+1; i++){
-        pinList.add(i);
-      }
-    }
-
     if(millis()-lastChange >= (dayDuration+housesTransitionDelay)*1000){
       Serial.print(isDay==1?"Accendo le luci delle case...":"Spengo le luci delle case...");
-      Serial.println(!isDay);
-      for(int i = firstHousePin; i < lastHousePin+1; i++){
-        pinIndex = random(0, pinList.size());
-        digitalWrite(pinList.get(pinIndex), !isDay);
-        delay(random(500, 2500));
-        pinList.remove(pinIndex);
+      if(isDay){
+        neighborhood.turnOnHouses();
+      }else{
+        neighborhood.turnOffHouses();
       }
 
       isDay = (isDay==1?0:1);
@@ -70,20 +60,25 @@ void sunTask(void *pvParameters){
   }
 }
 
+void moonTask(void *pvParameters){
+  Serial.print("--> sunTask è partita sul core ");
+  Serial.println(xPortGetCoreID());
+
+  for(;;){
+    if(millis()-lastChange >= dayDuration*1000){
+      Serial.println(isDay==1?"Faccio tramontare il sole...":"Faccio sorgere il sole...");
+      if(isDay){
+        moon.turnOff();
+      }else{
+        moon.turnOn();
+      }
+      lastChange = millis();
+    }
+  }
+}
+
 void testConnections(){
-  for(int i = firstHousePin; i < lastHousePin+1; i++){
-    digitalWrite(i, LOW);
-    delay(50);
-  }
-  digitalWrite(sunPin, LOW);
 
-  delay(150);
-
-  for(int i = lastHousePin; i > firstHousePin-1; i--){
-    digitalWrite(i, HIGH);
-    delay(50);
-  }
-  digitalWrite(sunPin, HIGH);
 }
 
 void clearSerial(){
@@ -101,15 +96,16 @@ void setup(){
   clearSerial();
 
   Serial.print("Creo le luci e le aggiungo alla lista...");
-  lightsList.add(GenericLight(32));
-  lightsList.add(GenericLight(33));
-  lightsList.add(GenericLight(25));
-  lightsList.add(GenericLight(26));
-  lightsList.add(GenericLight(27));
-  lightsList.add(GenericLight(14));
-  lightsList.add(GenericLight(12));
-  lightsList.add(GenericLight(13));
-  analogWrite(sunPin, 255);
+  neighborhood.addHouse(House(32));
+  neighborhood.addHouse(House(33));
+  neighborhood.addHouse(House(25));
+  neighborhood.addHouse(House(26));
+  neighborhood.addHouse(House(27));
+  neighborhood.addHouse(House(14));
+  neighborhood.addHouse(House(12));
+  neighborhood.addHouse(House(13));
+  analogWrite(sun.getPin(), 255);
+  analogWrite(moon.getPin(), 255);
   Serial.println(" Fatto!");
 
   Serial.print("Testo le connessioni...");
@@ -119,6 +115,7 @@ void setup(){
   Serial.println("Avvio le task...");
   //...(function, name, stack size, parameter, priority, task handle, core)
   xTaskCreate(sunTask, "Task del sole", 10000, NULL, 1, &sunTaskHandle);
+  xTaskCreate(moonTask, "Task della luna", 10000, NULL, 1, &moonTaskHandle);
   xTaskCreate(housesTask, "Task delle case", 10000, NULL, 1, &housesTaskHandle);
   Serial.println("\n\n\n");
 
